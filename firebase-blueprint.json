@@ -1,0 +1,45 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "A user of the EKSATHE platform.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "The unique ID of the user." },
+        "name": { "type": "string", "description": "The full name of the user." },
+        "email": { "type": "string", "description": "The email address of the user.", "format": "email" },
+        "avatar": { "type": "string", "description": "The URL of the user's avatar image." }
+      },
+      "required": ["id", "name", "email"]
+    },
+    "Plan": {
+      "title": "Plan",
+      "description": "A community plan or activity shared by a user.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "The unique ID of the plan." },
+        "userId": { "type": "string", "description": "The ID of the user who created the plan." },
+        "userName": { "type": "string", "description": "The name of the user who created the plan." },
+        "type": { "type": "string", "enum": ["Game", "Ride Share", "Hangout", "Study", "Event", "Other"], "description": "The type of activity." },
+        "title": { "type": "string", "description": "The title of the plan." },
+        "description": { "type": "string", "description": "A detailed description of the plan." },
+        "location": { "type": "string", "description": "The location where the activity will take place." },
+        "from": { "type": "string", "description": "The starting point for ride-sharing." },
+        "to": { "type": "string", "description": "The destination for ride-sharing." },
+        "dateTime": { "type": "string", "description": "The scheduled date and time of the plan.", "format": "date-time" },
+        "createdAt": { "type": "string", "description": "The timestamp when the plan was created.", "format": "date-time" }
+      },
+      "required": ["id", "userId", "userName", "type", "title", "description", "location", "dateTime", "createdAt"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": { "$ref": "User" },
+      "description": "Individual user profile documents."
+    },
+    "plans/{planId}": {
+      "schema": { "$ref": "Plan" },
+      "description": "Collection of community plans."
+    }
+  }
+}

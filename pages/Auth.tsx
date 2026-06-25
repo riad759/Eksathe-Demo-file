@@ -507,6 +507,25 @@ export const Auth: React.FC = () => {
                   </p>
                 </div>
 
+                {/* Live Sandbox Interactive OTP Presenter with One-click Autofill */}
+                <div className="bg-orange-50 dark:bg-orange-950/20 border border-dashed border-orange-200 dark:border-orange-900/40 p-4 rounded-2xl">
+                  <span className="block text-[11px] font-black text-orange-600 dark:text-orange-400 mb-1">🔍 পাবলিক প্রিভিউ স্যান্ডবক্স গাইড:</span>
+                  <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed mb-3">
+                    এটি একটি ডেভেলপমেন্ট এবং প্রিভিউ স্যান্ডবক্স পরিবেশ হওয়ায় সরাসরি মোবাইল ফোনে ফিজিক্যাল SMS যাবে না (এর জন্য প্রোডাকশনে Twilio/Greenweb API কি সংযুক্ত করতে হয়)। আপনাদের টেস্টিং সহজ করার জন্য নিচে ওটিপি কোডটি দেওয়া হলো:
+                  </p>
+                  <div className="flex items-center justify-between bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-2.5 rounded-xl">
+                    <span className="text-[11px] font-bold text-slate-500">আপনার টেস্ট ওটিপি:</span>
+                    <span className="font-mono text-base font-black text-orange-600 bg-orange-50 dark:bg-orange-950/40 px-3 py-1 rounded-lg select-all">{generatedOtp}</span>
+                  </div>
+                  <button 
+                    type="button"
+                    onClick={() => setEnteredOtp(generatedOtp)}
+                    className="w-full mt-3 py-2 px-3 bg-orange-100 hover:bg-orange-200/85 dark:bg-orange-950/40 dark:hover:bg-orange-950/60 text-orange-700 dark:text-orange-300 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 active:scale-[0.98]"
+                  >
+                    ⚡ কোডটি অটো-ফিল করুন (Auto-Fill Code)
+                  </button>
+                </div>
+
                 <Button
                   type="submit"
                   disabled={loading}

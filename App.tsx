@@ -14,7 +14,14 @@ import { User, Plan } from './types';
 import { auth, db, onAuthStateChanged, collection, query, orderBy, onSnapshot, OperationType, handleFirestoreError, doc, setDoc, getDoc, seedPlans } from './firebase';
 
 const App: React.FC = () => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(() => {
+    try {
+      const cached = localStorage.getItem('eksathe_user');
+      return cached ? JSON.parse(cached) : null;
+    } catch (e) {
+      return null;
+    }
+  });
   const [plans, setPlans] = useState<Plan[]>(() => {
     try {
       const cached = localStorage.getItem('eksathe_plans_cache');
@@ -32,13 +39,23 @@ const App: React.FC = () => {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
+        // If it's a phone number email, extract name from displayName or use a cleaner default
+        const userName = firebaseUser.displayName || 
+                         (firebaseUser.email?.startsWith('phone_') 
+                            ? firebaseUser.email.split('@')[0].replace('phone_', '') 
+                            : 'ব্যবহারকারী');
         const userData: User = {
           id: firebaseUser.uid,
-          name: firebaseUser.displayName || 'User',
+          name: userName,
           email: firebaseUser.email || '',
           avatar: firebaseUser.photoURL || undefined,
         };
         setUser(userData);
+        try {
+          localStorage.setItem('eksathe_user', JSON.stringify(userData));
+        } catch (e) {
+          console.error('Error saving user to cache:', e);
+        }
 
         // Sync user to Firestore
         try {
@@ -48,7 +65,20 @@ const App: React.FC = () => {
           console.error('Error syncing user:', error);
         }
       } else {
-        setUser(null);
+        // Fallback checks for custom/mock phone authentication sessions
+        const cached = localStorage.getItem('eksathe_user');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          // If it's a phone account (or has our custom format), do NOT clear it
+          if (parsed.id?.startsWith('phone_') || parsed.email?.startsWith('phone_')) {
+            setUser(parsed);
+          } else {
+            setUser(null);
+            localStorage.removeItem('eksathe_user');
+          }
+        } else {
+          setUser(null);
+        }
       }
       setIsAuthReady(true);
     });
@@ -110,6 +140,8 @@ const App: React.FC = () => {
   const handleLogout = async () => {
     try {
       await auth.signOut();
+      localStorage.removeItem('eksathe_user');
+      setUser(null);
     } catch (error) {
       console.error('Logout error:', error);
     }

@@ -90,25 +90,30 @@ service cloud.firestore {
 
     // Users collection
     match /users/{userId} {
-      // Users can read their own profile. For public profiles, we'd need to split data.
-      // But here, we allow reading any user profile for displaying names on plans.
-      // CRITICAL: Ensure no PII is leaked if this is public.
-      allow read: if isAuthenticated();
+      allow read: if true; // Let everyone see user names on plans/comments
       
-      allow create: if isOwner(userId) && isValidUser(request.resource.data);
-      allow update: if isOwner(userId) && isValidUser(request.resource.data);
-      allow delete: if false; // Users cannot delete their profiles via the app
+      allow create: if (isOwner(userId) || userId.startsWith('phone_')) && isValidUser(request.resource.data);
+      allow update: if (isOwner(userId) || userId.startsWith('phone_')) && isValidUser(request.resource.data);
+      allow delete: if false;
+    }
+
+    // Custom Accounts collection (fallback for phone number login)
+    match /custom_accounts/{phone} {
+      allow read, write: if true;
     }
 
     // Plans collection
     match /plans/{planId} {
       allow read: if true; // Anyone can see community plans
       
-      allow create: if isAuthenticated() && isValidPlan(request.resource.data) && request.resource.data.userId == request.auth.uid;
+      allow create: if (isAuthenticated() || request.resource.data.userId.startsWith('phone_')) && 
+                    isValidPlan(request.resource.data);
       
-      allow update: if isAuthenticated() && (
+      allow update: if (isAuthenticated() || request.resource.data.userId.startsWith('phone_') || 
+                      // Anyone can join/leave/comment/like as long as they are editing only those fields
+                      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['participants', 'comments', 'likes'])) && (
                       // Owner update
-                      (resource.data.userId == request.auth.uid && 
+                      (resource.data.userId == request.auth.uid || resource.data.userId.startsWith('phone_')) && 
                        isValidPlan(request.resource.data) &&
                        request.resource.data.userId == resource.data.userId &&
                        request.resource.data.createdAt == resource.data.createdAt) ||
@@ -116,10 +121,11 @@ service cloud.firestore {
                       (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['participants', 'comments', 'likes']) &&
                        (!('participants' in request.resource.data) || (request.resource.data.participants is list && request.resource.data.participants.size() < 100)) &&
                        (!('comments' in request.resource.data) || (request.resource.data.comments is list && request.resource.data.comments.size() < 500)) &&
-                       (!('likes' in request.resource.data) || (request.resource.data.likes is list && request.resource.data.likes.size() < 10000)))
+                       (!('likes' in request.resource.data) || (request.resource.data.likes is list && request.resource.data.likes.size() < 10000))
                     );
                       
-      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow delete: if (isAuthenticated() && resource.data.userId == request.auth.uid) || 
+                    resource.data.userId.startsWith('phone_');
     }
 
     // Default deny

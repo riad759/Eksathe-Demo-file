@@ -3,7 +3,8 @@ import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
-import { Plan } from '../types';
+import { QuickPostBox } from '../components/QuickPostBox';
+import { Plan, User } from '../types';
 
 interface HomeProps {
   plans: Plan[];
@@ -11,7 +12,7 @@ interface HomeProps {
 }
 
 export const Home: React.FC<HomeProps> = ({ plans, user }) => {
-  const featuredPlans = plans.slice(0, 3);
+  const featuredPlans = plans.slice(0, 6);
   const navigate = useNavigate();
 
   return (
@@ -101,6 +102,10 @@ export const Home: React.FC<HomeProps> = ({ plans, user }) => {
           </div>
           <Link to="/find" className="text-brand-500 font-bold hover:underline">সব দেখুন</Link>
         </div>
+
+        {/* Facebook-style Quick Post Box */}
+        <QuickPostBox user={user} />
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {featuredPlans.map(plan => (
             <Card key={plan.id} plan={plan} user={user} />
@@ -116,7 +121,7 @@ export const Home: React.FC<HomeProps> = ({ plans, user }) => {
               <h2 className="text-4xl md:text-5xl font-black mb-6 tracking-tight">ভাবনা বন্ধ করুন, যোগ দেওয়া শুরু করুন।</h2>
               <p className="text-lg opacity-80 mb-10 max-w-xl mx-auto">একটি একটি করে কার্যক্রমের মাধ্যমে সম্প্রদায় গঠনকারী হাজার হাজার মানুষের সাথে যোগ দিন।</p>
               <Link to="/login">
-                <Button className="mx-auto px-12 py-5 text-xl h-16 rounded-2xl bg-white text-slate-900 hover:bg-slate-100">এখনই শুরু করুন</Button>
+                <Button className="mx-auto px-12 py-5 text-xl h-16 rounded-2xl bg-brand-500 text-white hover:bg-brand-600 shadow-lg shadow-brand-500/30">এখনই শুরু করুন</Button>
               </Link>
             </div>
          </div>

@@ -83,10 +83,45 @@ export async function seedPlans(userId: string, userName: string) {
     { id: 'user_1', name: 'আরিফ আহমেদ' },
     { id: 'user_2', name: 'সাদিয়া ইসলাম' },
     { id: 'user_3', name: 'তানভীর রহমান' },
-    { id: 'user_4', name: 'নুসরাত জাহান' }
+    { id: 'user_4', name: 'নুসরাত জাহান' },
+    { id: 'user_5', name: 'আকাশ রহমান' },
+    { id: 'user_6', name: 'রায়হান কবির' }
   ];
 
   const demoPlans = [
+    {
+      userId: otherUsers[4].id,
+      userName: otherUsers[4].name,
+      type: 'Game',
+      title: 'ফুটবল ম্যাচ - বনানী সোসাইটি',
+      description: 'আকাশ রহমান বনানী মাঠে ৫-এ-সাইড ফুটবল ম্যাচের আয়োজন করছেন। ২ জন প্লেয়ার প্রয়োজন।',
+      location: 'বনানী সোসাইটি মাঠ, ঢাকা',
+      dateTime: new Date(Date.now() + 172800000).toISOString().slice(0, 16),
+      participants: [{ userId: otherUsers[4].id, userName: otherUsers[4].name }],
+      tags: ['Sports', 'Fitness']
+    },
+    {
+      userId: otherUsers[4].id,
+      userName: otherUsers[4].name,
+      type: 'Game',
+      title: 'বনানীতে ফ্রেন্ডলি ফুটবল ম্যাচ',
+      description: 'আজ সন্ধ্যায় বনানী ৮ নম্বর মাঠে আমরা ৫-এ-সাইড ফুটবল খেলব। আমাদের আরও ২ জন প্লেয়ার দরকার। বুট থাকলে নিয়ে আসবেন।',
+      location: 'বনানী সোসাইটি মাঠ, ঢাকা',
+      dateTime: new Date(Date.now() + 172800000).toISOString().slice(0, 16),
+      participants: [{ userId: otherUsers[4].id, userName: otherUsers[4].name }],
+      tags: ['Sports', 'Fitness']
+    },
+    {
+      userId: otherUsers[5].id,
+      userName: otherUsers[5].name,
+      type: 'Hangout',
+      title: 'পুরান ঢাকায় ইফতার ও আড্ডা',
+      description: 'আগামীকাল পুরান ঢাকার নাজিরাবাজারে আমরা কয়েকজন মিলে ইফতার করব। যারা ভোজনরসিক তারা যোগ দিতে পারেন!',
+      location: 'নাজিরাবাজার, ঢাকা',
+      dateTime: new Date(Date.now() + 86400000).toISOString().slice(0, 16),
+      participants: [{ userId: otherUsers[5].id, userName: otherUsers[5].name }],
+      tags: ['Foodie', 'Travel']
+    },
     {
       userId,
       userName,
@@ -95,8 +130,8 @@ export async function seedPlans(userId: string, userName: string) {
       description: 'আগামী শুক্রবার বিকেলে ধানমন্ডি ৮/এ মাঠে একটি ফ্রেন্ডলি ক্রিকেট ম্যাচের আয়োজন করছি। আমাদের আরও ৪ জন খেলোয়াড় দরকার। সবাই আমন্ত্রিত!',
       location: 'ধানমন্ডি ৮/এ মাঠ, ঢাকা',
       dateTime: new Date(Date.now() + 86400000).toISOString().slice(0, 16),
-      createdAt: new Date().toISOString(),
       participants: [{ userId, userName }],
+      tags: ['Sports', 'Fitness']
     },
     {
       userId: otherUsers[0].id,
@@ -108,8 +143,8 @@ export async function seedPlans(userId: string, userName: string) {
       from: 'গুলশান, ঢাকা',
       to: 'জিইসি মোড়, চট্টগ্রাম',
       dateTime: new Date(Date.now() + 172800000).toISOString().slice(0, 16),
-      createdAt: new Date().toISOString(),
       participants: [{ userId: otherUsers[0].id, userName: otherUsers[0].name }],
+      tags: ['Travel']
     },
     {
       userId: otherUsers[1].id,
@@ -119,8 +154,8 @@ export async function seedPlans(userId: string, userName: string) {
       description: 'আমরা কয়েকজন মিলে বিসিএস সাধারণ বিজ্ঞানের ওপর গ্রুপ স্টাডি করছি। যারা সিরিয়াসলি পড়তে চান তারা যোগ দিতে পারেন।',
       location: 'ঢাকা বিশ্ববিদ্যালয় লাইব্রেরি এলাকা',
       dateTime: new Date(Date.now() + 259200000).toISOString().slice(0, 16),
-      createdAt: new Date().toISOString(),
       participants: [{ userId: otherUsers[1].id, userName: otherUsers[1].name }],
+      tags: ['Education']
     },
     {
       userId: otherUsers[2].id,
@@ -130,8 +165,8 @@ export async function seedPlans(userId: string, userName: string) {
       description: 'বিশ্বসাহিত্য কেন্দ্রে বসে বই নিয়ে আড্ডা হবে। আপনার প্রিয় বইটি নিয়ে চলে আসুন।',
       location: 'বিশ্বসাহিত্য কেন্দ্র, বাংলামোটর',
       dateTime: new Date(Date.now() + 345600000).toISOString().slice(0, 16),
-      createdAt: new Date().toISOString(),
       participants: [{ userId: otherUsers[2].id, userName: otherUsers[2].name }],
+      tags: ['Education', 'Art']
     },
     {
       userId: otherUsers[3].id,
@@ -141,8 +176,8 @@ export async function seedPlans(userId: string, userName: string) {
       description: 'শনিবার ভোরে ৩০০ ফিট এলাকায় সাইক্লিং। যারা সাইক্লিং পছন্দ করেন তারা যোগ দিন।',
       location: 'কুড়িল বিশ্বরোড, ঢাকা',
       dateTime: new Date(Date.now() + 432000000).toISOString().slice(0, 16),
-      createdAt: new Date().toISOString(),
       participants: [{ userId: otherUsers[3].id, userName: otherUsers[3].name }],
+      tags: ['Fitness', 'Adventure']
     },
     {
       userId: otherUsers[0].id,
@@ -152,8 +187,8 @@ export async function seedPlans(userId: string, userName: string) {
       description: 'বনানী মাঠে ৫-এ-সাইড ফুটবল খেলার জন্য ২ জন খেলোয়াড় দরকার। সন্ধ্যা ৬টায় খেলা শুরু হবে।',
       location: 'বনানী সোসাইটি মাঠ, ঢাকা',
       dateTime: new Date(Date.now() + 518400000).toISOString().slice(0, 16),
-      createdAt: new Date().toISOString(),
       participants: [{ userId: otherUsers[0].id, userName: otherUsers[0].name }],
+      tags: ['Sports', 'Fitness'],
       comments: [
         {
           id: 'c1',
@@ -172,8 +207,8 @@ export async function seedPlans(userId: string, userName: string) {
       description: 'পুরান ঢাকার অলিগলিতে ফটোগ্রাফি করার জন্য একটি ছোট গ্রুপ করছি। যারা ছবি তুলতে ভালোবাসেন তারা যোগ দিন।',
       location: 'আহসান মঞ্জিল এলাকা, ঢাকা',
       dateTime: new Date(Date.now() + 604800000).toISOString().slice(0, 16),
-      createdAt: new Date().toISOString(),
       participants: [{ userId: otherUsers[1].id, userName: otherUsers[1].name }],
+      tags: ['Travel', 'Art'],
       comments: [
         {
           id: 'c2',
@@ -186,9 +221,12 @@ export async function seedPlans(userId: string, userName: string) {
     }
   ];
 
-  for (const plan of demoPlans) {
+  for (let i = 0; i < demoPlans.length; i++) {
+    const plan = demoPlans[i];
     try {
-      await addDoc(plansRef, plan);
+      // Add incremental offset to ensure consistent ordering
+      const createdAt = new Date(Date.now() + i * 1000).toISOString();
+      await addDoc(plansRef, { ...plan, createdAt });
     } catch (error) {
       console.error('Error seeding plan:', error);
     }

@@ -27,7 +27,9 @@
         "from": { "type": "string", "description": "The starting point for ride-sharing." },
         "to": { "type": "string", "description": "The destination for ride-sharing." },
         "dateTime": { "type": "string", "description": "The scheduled date and time of the plan.", "format": "date-time" },
-        "createdAt": { "type": "string", "description": "The timestamp when the plan was created.", "format": "date-time" }
+        "createdAt": { "type": "string", "description": "The timestamp when the plan was created.", "format": "date-time" },
+        "tags": { "type": "array", "description": "Categorical tags (e.g., Sports, Travel, Foodie) for the plan." },
+        "likes": { "type": "array", "description": "Array of user IDs who liked the plan." }
       },
       "required": ["id", "userId", "userName", "type", "title", "description", "location", "dateTime", "createdAt"]
     }

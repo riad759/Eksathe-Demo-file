@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { ActivityType, User } from '../types';
 import { Button } from '../components/Button';
 import { getPlanEnhancements } from '../services/geminiService';
-import { ACTIVITY_LABELS } from '../constants';
+import { ACTIVITY_LABELS, CATEGORICAL_TAGS } from '../constants';
 import { db, collection, addDoc, OperationType, handleFirestoreError } from '../firebase';
 
 interface PostProps {
@@ -22,6 +22,8 @@ export const Post: React.FC<PostProps> = ({ user }) => {
     to: '',
     dateTime: '',
   });
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [customTagInput, setCustomTagInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
   const [suggesting, setSuggesting] = useState(false);
@@ -36,6 +38,27 @@ export const Post: React.FC<PostProps> = ({ user }) => {
       </div>
     );
   }
+
+  const handleToggleTag = (tagId: string) => {
+    if (selectedTags.includes(tagId)) {
+      setSelectedTags(selectedTags.filter(t => t !== tagId));
+    } else {
+      if (selectedTags.length >= 10) return;
+      setSelectedTags([...selectedTags, tagId]);
+    }
+  };
+
+  const handleAddCustomTag = () => {
+    const tag = customTagInput.trim();
+    if (!tag) return;
+    if (selectedTags.includes(tag)) {
+      setCustomTagInput('');
+      return;
+    }
+    if (selectedTags.length >= 10) return;
+    setSelectedTags([...selectedTags, tag]);
+    setCustomTagInput('');
+  };
 
   const handleGetSuggestions = async () => {
     if (!formData.title || !formData.description) return;
@@ -62,6 +85,7 @@ export const Post: React.FC<PostProps> = ({ user }) => {
         userName: user.name,
         createdAt: new Date().toISOString(),
         participants: [{ userId: user.id, userName: user.name, avatar: user.avatar || '' }],
+        tags: selectedTags,
       };
 
       if (formData.type === ActivityType.RIDE_SHARE) {
@@ -86,8 +110,18 @@ export const Post: React.FC<PostProps> = ({ user }) => {
 
   return (
     <div className="max-w-4xl mx-auto px-6 py-16 font-bengali">
-      <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl rounded-[2.5rem] p-8 md:p-12 shadow-2xl border border-white dark:border-slate-700 transition-all">
-        <div className="mb-12">
+      <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl rounded-[2.5rem] p-8 md:p-12 shadow-2xl border border-white dark:border-slate-700 transition-all relative">
+        <button 
+          onClick={() => navigate(-1)}
+          className="absolute top-8 left-8 md:top-12 md:left-12 p-2 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-500 hover:text-brand-500 transition-all"
+          title="পিছনে যান"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+
+        <div className="mb-12 mt-10 md:mt-0">
           <h1 className="text-4xl font-black text-slate-900 dark:text-white mb-3">পরিকল্পনা পোস্ট করুন</h1>
           <p className="text-slate-500 dark:text-slate-400 font-medium">নিখুঁত সঙ্গী খুঁজে পেতে বিস্তারিত তথ্য পূরণ করুন।</p>
         </div>
@@ -190,6 +224,71 @@ export const Post: React.FC<PostProps> = ({ user }) => {
               />
             </div>
           )}
+
+          {/* Categorical Tags Selection */}
+          <div className="space-y-4">
+            <label className={labelClasses}>ট্যাগসমূহ যুক্ত করুন (Categorical Tags)</label>
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mb-3">সহজে খুঁজে পাওয়ার জন্য অন্তত ১-২টি ক্যাটাগরি ট্যাগ সিলেক্ট করুন অথবা নিচে কাস্টম ট্যাগ লিখুন:</p>
+            <div className="flex flex-wrap gap-2 mb-4">
+              {CATEGORICAL_TAGS.map(tag => {
+                const isSelected = selectedTags.includes(tag.id);
+                return (
+                  <button
+                    key={tag.id}
+                    type="button"
+                    onClick={() => handleToggleTag(tag.id)}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all ${
+                      isSelected
+                        ? 'bg-brand-500 text-white border-brand-500 shadow-md shadow-brand-500/10'
+                        : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-brand-500'
+                    }`}
+                  >
+                    {tag.bnLabel} ({tag.label})
+                  </button>
+                );
+              })}
+            </div>
+            
+            {/* Custom Tag Input */}
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="নতুন কাস্টম ট্যাগ লিখুন (যেমন: Football, Weekend, Night)"
+                className={`${inputClasses} flex-grow py-3 px-4 text-sm`}
+                value={customTagInput}
+                onChange={(e) => setCustomTagInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleAddCustomTag();
+                  }
+                }}
+              />
+              <button
+                type="button"
+                onClick={handleAddCustomTag}
+                className="px-6 py-3 rounded-2xl bg-slate-900 dark:bg-slate-700 text-white font-bold text-sm hover:bg-brand-500 transition-colors active:scale-95 shrink-0"
+              >
+                ট্যাগ যোগ করুন
+              </button>
+            </div>
+            {selectedTags.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 pt-2">
+                <span className="text-xs text-slate-400 dark:text-slate-500 font-bold self-center mr-1">নির্বাচিত ট্যাগসমূহ:</span>
+                {selectedTags.map(tag => (
+                  <span 
+                    key={tag}
+                    onClick={() => handleToggleTag(tag)}
+                    className="group cursor-pointer inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-black bg-brand-50 dark:bg-brand-950/20 text-brand-600 dark:text-brand-400 border border-brand-200/50 dark:border-brand-800/30 hover:bg-red-50 hover:text-red-600 hover:border-red-200 dark:hover:bg-red-950/20 dark:hover:text-red-400 transition-all"
+                    title="মুছে ফেলতে ক্লিক করুন"
+                  >
+                    #{tag}
+                    <span className="text-[10px] opacity-60 group-hover:text-red-600">×</span>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* AI Helper Section */}
           <div className="bg-brand-50/50 dark:bg-brand-900/10 p-8 rounded-[2rem] border border-brand-100 dark:border-brand-900/30 transition-all">

@@ -67,3 +67,23 @@ export const ACTIVITY_COLORS: Record<ActivityType, string> = {
   [ActivityType.EVENT]: 'bg-purple-100 text-purple-600',
   [ActivityType.OTHER]: 'bg-gray-100 text-gray-600',
 };
+
+export interface CategoricalTag {
+  id: string;
+  label: string;
+  bnLabel: string;
+}
+
+export const CATEGORICAL_TAGS: CategoricalTag[] = [
+  { id: 'Sports', label: 'Sports', bnLabel: 'খেলাধুলা' },
+  { id: 'Travel', label: 'Travel', bnLabel: 'ভ্রমণ' },
+  { id: 'Foodie', label: 'Foodie', bnLabel: 'খাবার-দাবার' },
+  { id: 'Education', label: 'Education', bnLabel: 'পড়াশোনা' },
+  { id: 'Tech', label: 'Tech', bnLabel: 'প্রযুক্তি' },
+  { id: 'Music', label: 'Music', bnLabel: 'গান-বাজনা' },
+  { id: 'Art', label: 'Art', bnLabel: 'শিল্প-সংস্কৃতি' },
+  { id: 'Fitness', label: 'Fitness', bnLabel: 'ফিটনেস' },
+  { id: 'Adventure', label: 'Adventure', bnLabel: 'অ্যাডভেঞ্চার' },
+  { id: 'Gaming', label: 'Gaming', bnLabel: 'গেমিং' }
+];
+

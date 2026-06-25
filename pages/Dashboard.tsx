@@ -62,6 +62,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, userPlans }) => {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         {/* Profile Sidebar */}
         <div className="lg:col-span-1">
+          <div className="mb-6">
+            <Link 
+              to="/"
+              className="flex items-center gap-2 text-slate-500 hover:text-orange-500 transition-colors font-bold text-sm"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+              </svg>
+              হোম পেজে ফিরে যান
+            </Link>
+          </div>
           <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 shadow-xl border border-gray-100 dark:border-slate-700 text-center sticky top-24">
             <div className="relative inline-block mb-6">
               {user.avatar ? (

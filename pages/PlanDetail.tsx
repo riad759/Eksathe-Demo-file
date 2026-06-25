@@ -18,6 +18,7 @@ export const PlanDetail: React.FC<PlanDetailProps> = ({ plans, user }) => {
   const [joining, setJoining] = useState(false);
   const [commentText, setCommentText] = useState('');
   const [sendingComment, setSendingComment] = useState(false);
+  const [liking, setLiking] = useState(false);
   const plan = plans.find(p => p.id === id);
 
   if (!plan) {
@@ -31,6 +32,33 @@ export const PlanDetail: React.FC<PlanDetailProps> = ({ plans, user }) => {
 
   const isOwner = user?.id === plan.userId;
   const isJoined = plan.participants?.some(p => p.userId === user?.id);
+  const isLiked = plan.likes?.includes(user?.id || '');
+
+  const handleLike = async () => {
+    if (!plan) return;
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+
+    setLiking(true);
+    try {
+      const planRef = doc(db, 'plans', plan.id);
+      if (isLiked) {
+        await updateDoc(planRef, {
+          likes: arrayRemove(user.id)
+        });
+      } else {
+        await updateDoc(planRef, {
+          likes: arrayUnion(user.id)
+        });
+      }
+      setLiking(false);
+    } catch (error) {
+      setLiking(false);
+      handleFirestoreError(error, OperationType.UPDATE, `plans/${plan.id}`);
+    }
+  };
 
   const handleDelete = async () => {
     if (!window.confirm('আপনি কি নিশ্চিত যে আপনি এই পরিকল্পনাটি মুছে ফেলতে চান?')) return;
@@ -175,6 +203,16 @@ export const PlanDetail: React.FC<PlanDetailProps> = ({ plans, user }) => {
             {plan.title}
           </h1>
 
+          {plan.tags && plan.tags.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-6">
+              {plan.tags.map((tag, idx) => (
+                <span key={idx} className="px-3 py-1.5 rounded-2xl text-xs font-bold bg-slate-50 dark:bg-slate-900/40 text-slate-600 dark:text-slate-300 border border-slate-200/50 dark:border-slate-700/50">
+                  #{tag}
+                </span>
+              ))}
+            </div>
+          )}
+
           <div className="flex flex-wrap gap-8 mb-10 p-6 bg-slate-50 dark:bg-slate-900/50 rounded-3xl border border-slate-100 dark:border-slate-700">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-2xl bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center text-orange-600">
@@ -247,6 +285,28 @@ export const PlanDetail: React.FC<PlanDetailProps> = ({ plans, user }) => {
             <p className="text-slate-600 dark:text-slate-400 text-lg leading-relaxed whitespace-pre-wrap">
               {plan.description}
             </p>
+          </div>
+
+          {/* Social Reactions (Like & Share Count) */}
+          <div className="flex items-center gap-4 p-4 mb-12 bg-slate-50 dark:bg-slate-900/40 rounded-3xl border border-slate-100/50 dark:border-slate-800/50">
+            <button 
+              onClick={handleLike}
+              disabled={liking}
+              className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-bold text-sm transition-all active:scale-95 ${
+                isLiked 
+                  ? 'bg-brand-500 text-white shadow-lg shadow-brand-500/20' 
+                  : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-brand-50 hover:text-brand-600 dark:hover:bg-brand-950/20 border border-slate-100 dark:border-slate-700'
+              }`}
+            >
+              <svg className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+              </svg>
+              <span>{isLiked ? 'পছন্দ করা হয়েছে' : 'পছন্দ করুন'} ({plan.likes?.length || 0})</span>
+            </button>
+
+            <span className="text-xs font-bold text-slate-400 dark:text-slate-500 ml-auto">
+              {plan.likes?.length || 0} জন পছন্দ করেছেন এবং {plan.comments?.length || 0}টি মন্তব্য রয়েছে
+            </span>
           </div>
 
           {/* Participants Section */}

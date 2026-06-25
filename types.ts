@@ -44,6 +44,8 @@ export interface Plan {
   createdAt: string;
   participants?: Participant[];
   comments?: Comment[];
+  tags?: string[];
+  likes?: string[];
 }
 
 export interface AuthState {

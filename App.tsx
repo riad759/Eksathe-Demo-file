@@ -15,7 +15,14 @@ import { auth, db, onAuthStateChanged, collection, query, orderBy, onSnapshot, O
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
-  const [plans, setPlans] = useState<Plan[]>([]);
+  const [plans, setPlans] = useState<Plan[]>(() => {
+    try {
+      const cached = localStorage.getItem('eksathe_plans_cache');
+      return cached ? JSON.parse(cached) : [];
+    } catch (e) {
+      return [];
+    }
+  });
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [hasSeeded, setHasSeeded] = useState(false);
   const [darkMode, setDarkMode] = useState<boolean>(() => {
@@ -69,6 +76,11 @@ const App: React.FC = () => {
         ...doc.data()
       })) as Plan[];
       setPlans(plansData);
+      try {
+        localStorage.setItem('eksathe_plans_cache', JSON.stringify(plansData));
+      } catch (e) {
+        console.error('Error saving plans to cache:', e);
+      }
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'plans');
     });
@@ -79,13 +91,13 @@ const App: React.FC = () => {
   // Automatic seeding logic
   useEffect(() => {
     const autoSeed = async () => {
-      if (isAuthReady && user && plans.length === 0 && !hasSeeded) {
-        const seedFlag = localStorage.getItem('eksathe_seeded');
+      if (isAuthReady && user && !hasSeeded) {
+        const seedFlag = localStorage.getItem('eksathe_seeded_v4');
         if (!seedFlag) {
           setHasSeeded(true);
           try {
             await seedPlans(user.id, user.name);
-            localStorage.setItem('eksathe_seeded', 'true');
+            localStorage.setItem('eksathe_seeded_v4', 'true');
           } catch (error) {
             console.error('Auto-seeding error:', error);
           }
@@ -93,7 +105,7 @@ const App: React.FC = () => {
       }
     };
     autoSeed();
-  }, [isAuthReady, user, plans.length, hasSeeded]);
+  }, [isAuthReady, user, hasSeeded]);
 
   const handleLogout = async () => {
     try {

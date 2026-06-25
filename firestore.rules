@@ -67,7 +67,7 @@ service cloud.firestore {
     }
 
     function isValidPlan(data) {
-      return hasOnlyAllowedFields(['userId', 'userName', 'type', 'title', 'description', 'location', 'from', 'to', 'dateTime', 'createdAt', 'participants', 'comments']) &&
+      return hasOnlyAllowedFields(['userId', 'userName', 'type', 'title', 'description', 'location', 'from', 'to', 'dateTime', 'createdAt', 'participants', 'comments', 'tags', 'likes']) &&
              data.userId is string && (data.userId == request.auth.uid || resource.data.userId == data.userId) &&
              data.userName is string && data.userName.size() > 0 && data.userName.size() < 100 &&
              data.type in ['Game', 'Ride Share', 'Hangout', 'Study', 'Event', 'Other'] &&
@@ -79,7 +79,9 @@ service cloud.firestore {
              isValidDateString(data.dateTime) &&
              isValidDateString(data.createdAt) &&
              (!('participants' in data) || (data.participants is list && data.participants.size() < 100)) &&
-             (!('comments' in data) || (data.comments is list && data.comments.size() < 500));
+             (!('comments' in data) || (data.comments is list && data.comments.size() < 500)) &&
+             (!('tags' in data) || (data.tags is list && data.tags.size() <= 10 && (data.tags.size() == 0 || data.tags[0] is string))) &&
+             (!('likes' in data) || (data.likes is list && data.likes.size() < 10000 && (data.likes.size() == 0 || data.likes[0] is string)));
     }
 
     // ===============================================================
@@ -110,10 +112,11 @@ service cloud.firestore {
                        isValidPlan(request.resource.data) &&
                        request.resource.data.userId == resource.data.userId &&
                        request.resource.data.createdAt == resource.data.createdAt) ||
-                      // Join/Leave/Comment update (only specific fields)
-                      (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['participants', 'comments']) &&
+                      // Join/Leave/Comment/Like update (only specific fields)
+                      (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['participants', 'comments', 'likes']) &&
                        (!('participants' in request.resource.data) || (request.resource.data.participants is list && request.resource.data.participants.size() < 100)) &&
-                       (!('comments' in request.resource.data) || (request.resource.data.comments is list && request.resource.data.comments.size() < 500)))
+                       (!('comments' in request.resource.data) || (request.resource.data.comments is list && request.resource.data.comments.size() < 500)) &&
+                       (!('likes' in request.resource.data) || (request.resource.data.likes is list && request.resource.data.likes.size() < 10000)))
                     );
                       
       allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;

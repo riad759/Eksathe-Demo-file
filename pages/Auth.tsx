@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { Button } from '../components/Button';
 import { auth, googleProvider, signInWithPopup } from '../firebase';
 
@@ -13,7 +14,16 @@ export const Auth: React.FC = () => {
   };
 
   return (
-    <div className="min-h-[calc(100vh-64px)] flex items-center justify-center px-4 bg-slate-50 dark:bg-slate-900 transition-colors font-bengali">
+    <div className="min-h-[calc(100vh-64px)] flex items-center justify-center px-4 bg-slate-50 dark:bg-slate-900 transition-colors font-bengali relative">
+      <Link 
+        to="/"
+        className="absolute top-8 left-8 p-2 rounded-xl bg-white dark:bg-slate-800 text-slate-500 hover:text-orange-500 shadow-sm transition-all"
+        title="হোম পেজে ফিরে যান"
+      >
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" />
+        </svg>
+      </Link>
       <div className="max-w-md w-full bg-white dark:bg-slate-800 rounded-3xl p-10 shadow-2xl border border-gray-100 dark:border-slate-700 transition-all">
         <div className="text-center mb-10">
           <div className="inline-block bg-orange-500 p-2.5 rounded-2xl mb-4 shadow-lg shadow-orange-500/20">

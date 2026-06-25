@@ -14,6 +14,17 @@ export const RideShare: React.FC<RideShareProps> = ({ plans, user }) => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-12 font-bengali">
+      <div className="mb-6">
+        <Link 
+          to="/"
+          className="flex items-center gap-2 text-slate-500 hover:text-blue-500 transition-colors font-bold text-sm"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+          </svg>
+          হোম পেজে ফিরে যান
+        </Link>
+      </div>
       <div className="bg-blue-600 dark:bg-blue-800 rounded-3xl p-8 md:p-12 mb-12 text-white relative overflow-hidden shadow-2xl">
         <div className="relative z-10 max-w-2xl">
           <h1 className="text-4xl font-black mb-4">জ্বালানি বাঁচান, আপনার যাত্রা ভাগ করুন</h1>

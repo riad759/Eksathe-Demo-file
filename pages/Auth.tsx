@@ -115,6 +115,9 @@ export const Auth: React.FC = () => {
 
     setLoading(true);
 
+    let userExists = false;
+    let firestoreFailed = false;
+
     try {
       // For Register, check if custom account already exists in fallback Firestore
       if (phoneMode === 'register') {
@@ -130,18 +133,50 @@ export const Auth: React.FC = () => {
         const customUserRef = doc(db, 'custom_accounts', cleanNumber);
         const customUserSnap = await getDoc(customUserRef);
         
-        // We will allow check to pass anyway, but check existing accounts
-        if (!customUserSnap.exists()) {
+        if (customUserSnap.exists()) {
+          userExists = true;
+        } else {
           // Check users collection too
           const userDoc = await getDoc(doc(db, 'users', `phone_${cleanNumber}`));
-          if (!userDoc.exists()) {
-            setErrorMsg('এই মোবাইল নম্বর দিয়ে কোনো অ্যাকাউন্ট খুঁজে পাওয়া যায়নি। অনুগ্রহ করে প্রথমে অ্যাকাউন্ট খুলুন।');
-            setLoading(false);
-            return;
+          if (userDoc.exists()) {
+            userExists = true;
           }
         }
       }
+    } catch (firestoreErr: any) {
+      console.warn('Firestore existence check failed, falling back to localStorage check:', firestoreErr);
+      firestoreFailed = true;
+      
+      // Secondary fallback using localStorage
+      const localAccountsStr = localStorage.getItem('eksathe_fallback_accounts');
+      const localAccounts = localAccountsStr ? JSON.parse(localAccountsStr) : {};
+      
+      if (phoneMode === 'register') {
+        if (localAccounts[cleanNumber]) {
+          setErrorMsg('এই মোবাইল নম্বর দিয়ে ইতিমধ্যে একাউন্ট তৈরি করা আছে! দয়া করে লগইন করুন।');
+          setLoading(false);
+          return;
+        }
+      } else {
+        if (localAccounts[cleanNumber]) {
+          userExists = true;
+        }
+      }
+    }
 
+    // For Login, if user doesn't exist anywhere
+    if (phoneMode === 'login' && !userExists) {
+      // If Firestore failed, we allow them to proceed anyway with a warning so they aren't blocked!
+      if (firestoreFailed) {
+        console.warn('Database connection failed, allowing login simulation fallback.');
+      } else {
+        setErrorMsg('এই মোবাইল নম্বর দিয়ে কোনো অ্যাকাউন্ট খুঁজে পাওয়া যায়নি। অনুগ্রহ করে প্রথমে অ্যাকাউন্ট খুলুন।');
+        setLoading(false);
+        return;
+      }
+    }
+
+    try {
       // Generate a secure 6-digit OTP code
       const code = Math.floor(100000 + Math.random() * 900000).toString();
       setGeneratedOtp(code);
@@ -159,7 +194,7 @@ export const Auth: React.FC = () => {
 
     } catch (err: any) {
       console.error('Send OTP error:', err);
-      setErrorMsg('ওটিপি পাঠাতে সমস্যা হয়েছে। আবার চেষ্টা করুন।');
+      setErrorMsg(`ওটিপি পাঠাতে সমস্যা হয়েছে: ${err.message || err}`);
     } finally {
       setLoading(false);
     }
@@ -199,16 +234,6 @@ export const Auth: React.FC = () => {
         } catch (firebaseErr: any) {
           console.warn('Firebase email/password signup error, using Firestore fallback:', firebaseErr);
           
-          // Save custom account credentials
-          const customUserRef = doc(db, 'custom_accounts', cleanNumber);
-          await setDoc(customUserRef, {
-            name: trimmedName,
-            phone: cleanNumber,
-            password: password,
-            createdAt: new Date().toISOString()
-          });
-
-          // Sync user to main users collection as well
           const userId = `phone_${cleanNumber}`;
           const userData = {
             id: userId,
@@ -216,7 +241,37 @@ export const Auth: React.FC = () => {
             email: email,
             avatar: undefined
           };
-          await setDoc(doc(db, 'users', userId), userData);
+
+          // Save custom account credentials to Firestore (non-blocking)
+          try {
+            const customUserRef = doc(db, 'custom_accounts', cleanNumber);
+            await setDoc(customUserRef, {
+              name: trimmedName,
+              phone: cleanNumber,
+              password: password,
+              createdAt: new Date().toISOString()
+            });
+
+            // Sync user to main users collection as well
+            await setDoc(doc(db, 'users', userId), userData);
+          } catch (writeErr: any) {
+            console.error('Failed to write credentials to Firestore:', writeErr);
+          }
+
+          // Save to localStorage custom accounts list fallback
+          try {
+            const localAccountsStr = localStorage.getItem('eksathe_fallback_accounts');
+            const localAccounts = localAccountsStr ? JSON.parse(localAccountsStr) : {};
+            localAccounts[cleanNumber] = {
+              name: trimmedName,
+              phone: cleanNumber,
+              password: password,
+              createdAt: new Date().toISOString()
+            };
+            localStorage.setItem('eksathe_fallback_accounts', JSON.stringify(localAccounts));
+          } catch (localErr) {
+            console.error('Failed to save fallback accounts locally:', localErr);
+          }
 
           // Save custom session
           localStorage.setItem('eksathe_user', JSON.stringify(userData));
@@ -241,12 +296,27 @@ export const Auth: React.FC = () => {
           console.warn('Firebase email/password login error, using Firestore fallback:', firebaseErr);
 
           // Retrieve user details from fallback database
-          const customUserRef = doc(db, 'custom_accounts', cleanNumber);
-          const customUserSnap = await getDoc(customUserRef);
-
           let finalName = 'ব্যবহারকারী';
-          if (customUserSnap.exists()) {
-            finalName = customUserSnap.data().name || 'ব্যবহারকারী';
+          try {
+            const customUserRef = doc(db, 'custom_accounts', cleanNumber);
+            const customUserSnap = await getDoc(customUserRef);
+
+            if (customUserSnap.exists()) {
+              finalName = customUserSnap.data().name || 'ব্যবহারকারী';
+            }
+          } catch (readErr: any) {
+            console.error('Failed to read credentials from Firestore on login:', readErr);
+          }
+
+          // Also check localStorage fallback!
+          try {
+            const localAccountsStr = localStorage.getItem('eksathe_fallback_accounts');
+            const localAccounts = localAccountsStr ? JSON.parse(localAccountsStr) : {};
+            if (localAccounts[cleanNumber]) {
+              finalName = localAccounts[cleanNumber].name || finalName;
+            }
+          } catch (localErr) {
+            console.error('Failed to read from local accounts fallback:', localErr);
           }
 
           const userId = `phone_${cleanNumber}`;
@@ -260,8 +330,12 @@ export const Auth: React.FC = () => {
           // Store session
           localStorage.setItem('eksathe_user', JSON.stringify(userData));
 
-          // Write to main users collection just in case
-          await setDoc(doc(db, 'users', userId), userData, { merge: true });
+          try {
+            // Write to main users collection just in case
+            await setDoc(doc(db, 'users', userId), userData, { merge: true });
+          } catch (writeErr: any) {
+            console.error('Failed to write credentials to Firestore during fallback login:', writeErr);
+          }
 
           setSuccessMsg('লগইন ও ভেরিফিকেশন সফল হয়েছে! প্রবেশ করা হচ্ছে...');
           setTimeout(() => {

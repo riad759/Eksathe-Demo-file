@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../components/Button';
+import { RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from 'firebase/auth';
 import { 
   auth, 
   googleProvider, 
@@ -32,6 +33,25 @@ export const Auth: React.FC = () => {
   const [enteredOtp, setEnteredOtp] = useState('');
   const [otpTimer, setOtpTimer] = useState(60);
   const [smsToast, setSmsToast] = useState<string | null>(null);
+
+  // Real Firebase Phone Auth states
+  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
+  const [isRealFirebasePhoneAuth, setIsRealFirebasePhoneAuth] = useState(false);
+  const [showFirebaseConfigHelp, setShowFirebaseConfigHelp] = useState(false);
+  const recaptchaVerifierRef = React.useRef<RecaptchaVerifier | null>(null);
+
+  // Clean up recaptcha on unmount
+  React.useEffect(() => {
+    return () => {
+      if (recaptchaVerifierRef.current) {
+        try {
+          recaptchaVerifierRef.current.clear();
+        } catch (e) {
+          console.error('Error clearing recaptcha verifier:', e);
+        }
+      }
+    };
+  }, []);
 
   // Timer countdown for resending OTP
   React.useEffect(() => {
@@ -85,6 +105,22 @@ export const Auth: React.FC = () => {
       clean = clean.substring(1);
     }
     return '0' + clean; // Ensure it starts with standard 0
+  };
+
+  // Convert to E.164 format for Firebase Phone Authentication
+  const getE164Phone = (rawPhone: string) => {
+    const englishPhone = convertBanglaToEnglish(rawPhone);
+    let clean = englishPhone.replace(/[^\d+]/g, ''); // Keep digits and +
+    if (clean.startsWith('+')) {
+      return clean;
+    }
+    if (clean.startsWith('880')) {
+      return '+' + clean;
+    }
+    if (clean.startsWith('0')) {
+      return '+88' + clean;
+    }
+    return '+880' + clean;
   };
 
   // Step 1: Send OTP code
@@ -177,24 +213,62 @@ export const Auth: React.FC = () => {
     }
 
     try {
-      // Generate a secure 6-digit OTP code
+      const e164Phone = getE164Phone(trimmedPhone);
+      
+      // Check if reCAPTCHA element exists in the DOM. If not, wait for it or warn.
+      const recaptchaContainer = document.getElementById('recaptcha-container');
+      if (!recaptchaContainer) {
+        // Create element dynamically if missing
+        const div = document.createElement('div');
+        div.id = 'recaptcha-container';
+        div.className = 'hidden';
+        document.body.appendChild(div);
+      }
+
+      // Initialize or reuse RecaptchaVerifier
+      if (!recaptchaVerifierRef.current) {
+        recaptchaVerifierRef.current = new RecaptchaVerifier(auth, 'recaptcha-container', {
+          size: 'invisible',
+          callback: () => {
+            console.log('reCAPTCHA solved!');
+          },
+          'expired-callback': () => {
+            console.warn('reCAPTCHA expired.');
+          }
+        });
+      }
+
+      console.log('Attempting Firebase Phone Auth for:', e164Phone);
+      const confirmation = await signInWithPhoneNumber(auth, e164Phone, recaptchaVerifierRef.current);
+      setConfirmationResult(confirmation);
+      setIsRealFirebasePhoneAuth(true);
+      setShowFirebaseConfigHelp(false);
+      setOtpTimer(60);
+      setIsOtpStep(true);
+      setSuccessMsg(`ওটিপি (OTP) সফলভাবে আপনার মোবাইলে পাঠানো হয়েছে! কোডটি নিচে লিখুন।`);
+      setSmsToast(`আপনার ${cleanNumber} নম্বরে ওটিপি পাঠানো হয়েছে।`);
+
+    } catch (firebaseAuthErr: any) {
+      console.warn('Firebase Phone Auth failed or not configured in Firebase Console. Falling back to robust Sandbox mode:', firebaseAuthErr);
+      
+      // Let's set states so the user knows they are in simulation fallback, but can still test!
+      setIsRealFirebasePhoneAuth(false);
+      setShowFirebaseConfigHelp(true);
+
+      // Generate a secure 6-digit OTP code for sandbox testing
       const code = Math.floor(100000 + Math.random() * 900000).toString();
       setGeneratedOtp(code);
       setOtpTimer(60);
       setIsOtpStep(true);
 
-      // Trigger beautiful live simulated SMS delivered directly inside our application
+      // Trigger simulated SMS delivered directly inside our application
       setSmsToast(`আপনার ${cleanNumber} নম্বরে ওটিপি পাঠানো হয়েছে।`);
-      setSuccessMsg(`ওটিপি (OTP) পাঠানো হয়েছে! কোডটি নিচে লিখুন।`);
+      setSuccessMsg(`ফায়ারবেস ফোন অথেনটিকেশন অপশনটি ফায়ারবেস কনসোলে চালু করা না থাকায় আমরা ওটিপি স্যান্ডবক্স মোড চালু করেছি। ওটিপি (OTP) পাঠানো হয়েছে! কোডটি নিচে লিখুন।`);
 
       // Set SMS toast banner with direct code for testing & easy signin
       setTimeout(() => {
         setSmsToast(`💬 [SMS] EKSATHE: আপনার অ্যাকাউন্ট ভেরিফিকেশন ওটিপি (OTP) কোডটি হলো: ${code}। এটি ৫ মিনিটের মধ্যে ব্যবহার করুন।`);
       }, 800);
-
-    } catch (err: any) {
-      console.error('Send OTP error:', err);
-      setErrorMsg(`ওটিপি পাঠাতে সমস্যা হয়েছে: ${err.message || err}`);
     } finally {
       setLoading(false);
     }
@@ -207,16 +281,76 @@ export const Auth: React.FC = () => {
     setSuccessMsg('');
 
     const englishEnteredOtp = convertBanglaToEnglish(enteredOtp.trim());
+    
+    setLoading(true);
+    const cleanNumber = cleanPhone(phone);
+    const trimmedName = name.trim() || 'ব্যবহারকারী';
+
+    // Handle real Firebase phone authentication code verification
+    if (isRealFirebasePhoneAuth && confirmationResult) {
+      try {
+        const userCredential = await confirmationResult.confirm(englishEnteredOtp);
+        const fbUser = userCredential.user;
+        
+        // Update user display name if they registered and it's empty
+        if (phoneMode === 'register' && name.trim()) {
+          try {
+            await updateProfile(fbUser, { displayName: trimmedName });
+          } catch (profileErr) {
+            console.warn('Could not update Firebase Auth profile name:', profileErr);
+          }
+        }
+
+        const userId = fbUser.uid;
+        const email = fbUser.email || `phone_${cleanNumber}@eksathe.com`;
+        const userData = {
+          id: userId,
+          name: fbUser.displayName || trimmedName,
+          email: email,
+          avatar: undefined
+        };
+
+        // Persist to Fallback Firestore custom accounts and users collection (non-blocking)
+        try {
+          const customUserRef = doc(db, 'custom_accounts', cleanNumber);
+          await setDoc(customUserRef, {
+            name: trimmedName,
+            phone: cleanNumber,
+            firebaseUid: fbUser.uid,
+            createdAt: new Date().toISOString()
+          }, { merge: true });
+
+          await setDoc(doc(db, 'users', userId), userData, { merge: true });
+        } catch (writeErr) {
+          console.error('Failed to sync verified user details to Firestore:', writeErr);
+        }
+
+        // Save custom session
+        localStorage.setItem('eksathe_user', JSON.stringify(userData));
+        
+        setSuccessMsg('মোবাইল নম্বর ওটিপি ভেরিফিকেশন সফল হয়েছে! প্রবেশ করা হচ্ছে...');
+        setTimeout(() => {
+          navigate('/');
+          window.location.reload();
+        }, 1500);
+        return;
+      } catch (fbVerifyErr: any) {
+        console.error('Real Phone OTP verification failed:', fbVerifyErr);
+        setErrorMsg('ভুল ওটিপি (OTP)! দয়া করে ফোনের ইনবক্সে আসা সঠিক কোডটি পুনরায় লিখুন।');
+        setLoading(false);
+        return;
+      }
+    }
+
+    // Otherwise, handle Simulated OTP Verification Mode
     if (englishEnteredOtp !== generatedOtp && englishEnteredOtp !== '123456') {
       setErrorMsg('ভুল ওটিপি (OTP)! দয়া করে সঠিক কোডটি পুনরায় লিখুন। (পরীক্ষার জন্য আপনি "123456" কোডটিও ব্যবহার করতে পারেন)');
+      setLoading(false);
       return;
     }
 
-    setLoading(true);
-    const cleanNumber = cleanPhone(phone);
     const email = `phone_${cleanNumber}@eksathe.com`;
-    const password = `phone_otp_verified_default_${cleanNumber}`; // secure, predictable backend password
-    const trimmedName = name.trim() || 'ব্যবহারকারী';
+    const password = `phone_otp_verified_default_${cleanNumber}`;
 
     try {
       if (phoneMode === 'register') {
@@ -572,7 +706,7 @@ export const Auth: React.FC = () => {
                     onClick={() => { setIsOtpStep(false); setErrorMsg(''); }}
                     className="ml-3 text-[11px] text-slate-400 hover:text-orange-500 underline font-black"
                   >
-                    পরিবর্তন করুন
+                    পরিবর্তن করুন
                   </button>
                 </div>
 
@@ -588,28 +722,63 @@ export const Auth: React.FC = () => {
                     required
                   />
                   <p className="text-[10px] text-slate-400 mt-1.5 leading-relaxed font-semibold">
-                    ফোনের ইনবক্স বা উপরের ব্লু নোটিফিকেশন বারটি চেক করুন। সেখানে ওটিপি কোডটি প্রদর্শিত হচ্ছে।
+                    {isRealFirebasePhoneAuth 
+                      ? 'আপনার মোবাইল ফোনের ইনবক্সে ফায়ারবেস থেকে পাঠানো এসএমএস কোডটি চেক করুন।'
+                      : 'ফোনের ইনবক্স বা উপরের ব্লু নোটিফিকেশন বারটি চেক করুন। সেখানে ওটিপি কোডটি প্রদর্শিত হচ্ছে।'
+                    }
                   </p>
                 </div>
 
-                {/* Live Sandbox Interactive OTP Presenter with One-click Autofill */}
-                <div className="bg-orange-50 dark:bg-orange-950/20 border border-dashed border-orange-200 dark:border-orange-900/40 p-4 rounded-2xl">
-                  <span className="block text-[11px] font-black text-orange-600 dark:text-orange-400 mb-1">🔍 পাবলিক প্রিভিউ স্যান্ডবক্স গাইড:</span>
-                  <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed mb-3">
-                    এটি একটি ডেভেলপমেন্ট এবং প্রিভিউ স্যান্ডবক্স পরিবেশ হওয়ায় সরাসরি মোবাইল ফোনে ফিজিক্যাল SMS যাবে না (এর জন্য প্রোডাকশনে Twilio/Greenweb API কি সংযুক্ত করতে হয়)। আপনাদের টেস্টিং সহজ করার জন্য নিচে ওটিপি কোডটি দেওয়া হলো:
-                  </p>
-                  <div className="flex items-center justify-between bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-2.5 rounded-xl">
-                    <span className="text-[11px] font-bold text-slate-500">আপনার টেস্ট ওটিপি:</span>
-                    <span className="font-mono text-base font-black text-orange-600 bg-orange-50 dark:bg-orange-950/40 px-3 py-1 rounded-lg select-all">{generatedOtp}</span>
+                {/* Real Firebase SMS Indicator */}
+                {isRealFirebasePhoneAuth && (
+                  <div className="bg-emerald-50 dark:bg-emerald-950/15 border border-emerald-100 dark:border-emerald-900/30 p-4 rounded-2xl">
+                    <span className="block text-[11px] font-black text-emerald-600 dark:text-emerald-400 mb-1">💬 রিয়েল ফায়ারবেস ওটিপি সেশন:</span>
+                    <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+                      ফায়ারবেস ফোন অথেনটিকেশন সফলভাবে কোড পাঠিয়েছে! আপনার মোবাইলের মেসেজ ইনবক্সের কোডটি উপরে দিয়ে ভেরিফাই করুন। (কোনো কারণে এসএমএস না আসলে অনুগ্রহ করে স্যান্ডবক্স মোড বা গুগল লগইন ব্যবহার করুন)।
+                    </p>
                   </div>
-                  <button 
-                    type="button"
-                    onClick={() => setEnteredOtp(generatedOtp)}
-                    className="w-full mt-3 py-2 px-3 bg-orange-100 hover:bg-orange-200/85 dark:bg-orange-950/40 dark:hover:bg-orange-950/60 text-orange-700 dark:text-orange-300 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 active:scale-[0.98]"
-                  >
-                    ⚡ কোডটি অটো-ফিল করুন (Auto-Fill Code)
-                  </button>
-                </div>
+                )}
+
+                {/* Live Sandbox Interactive OTP Presenter with One-click Autofill */}
+                {!isRealFirebasePhoneAuth && (
+                  <div className="bg-orange-50 dark:bg-orange-950/20 border border-dashed border-orange-200 dark:border-orange-900/40 p-4 rounded-2xl">
+                    <span className="block text-[11px] font-black text-orange-600 dark:text-orange-400 mb-1">🔍 পাবলিক প্রিভিউ স্যান্ডবক্স গাইড:</span>
+                    <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed mb-3">
+                      এটি একটি ডেভেলপমেন্ট এবং প্রিভিউ স্যান্ডবক্স পরিবেশ হওয়ায় সরাসরি মোবাইল ফোনে ফিজিক্যাল SMS যাবে না (এর জন্য প্রোডাকশনে Twilio/Greenweb API কি সংযুক্ত করতে হয়)। আপনাদের টেস্টিং সহজ করার জন্য নিচে ওটিপি কোডটি দেওয়া হলো:
+                    </p>
+                    <div className="flex items-center justify-between bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-2.5 rounded-xl">
+                      <span className="text-[11px] font-bold text-slate-500">আপনার টেস্ট ওটিপি:</span>
+                      <span className="font-mono text-base font-black text-orange-600 bg-orange-50 dark:bg-orange-950/40 px-3 py-1 rounded-lg select-all">{generatedOtp}</span>
+                    </div>
+                    <button 
+                      type="button"
+                      onClick={() => setEnteredOtp(generatedOtp)}
+                      className="w-full mt-3 py-2 px-3 bg-orange-100 hover:bg-orange-200/85 dark:bg-orange-950/40 dark:hover:bg-orange-950/60 text-orange-700 dark:text-orange-300 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 active:scale-[0.98]"
+                    >
+                      ⚡ কোডটি অটো-ফিল করুন (Auto-Fill Code)
+                    </button>
+                  </div>
+                )}
+
+                {/* Firebase config instructions for the user */}
+                {showFirebaseConfigHelp && (
+                  <div className="bg-amber-50/80 dark:bg-amber-950/10 border border-amber-100/70 dark:border-amber-900/30 p-5 rounded-2xl space-y-3">
+                    <h4 className="flex items-center gap-1.5 text-amber-800 dark:text-amber-400 font-black text-xs">
+                      <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 16h-1v-4h-1m1-4h.01M12 22a10 10 0 110-20 10 10 0 010 20z" />
+                      </svg>
+                      মোবাইলে রিয়েল SMS পাঠাতে চান?
+                    </h4>
+                    <p className="text-slate-600 dark:text-slate-300 text-[11px] font-medium leading-relaxed">
+                      ফায়ারবেস অথেনটিকেশন ব্যবহার করে রিয়েল মোবাইলে সম্পূর্ণ ফ্রি (প্রতি মাসে ১০,০০০ টি SMS) ওটিপি পাঠাতে নিচের ৩টি সহজ ধাপ সম্পন্ন করুন:
+                    </p>
+                    <ol className="text-slate-500 dark:text-slate-400 text-[11px] font-medium leading-relaxed list-decimal pl-4 space-y-1">
+                      <li>আপনার <a href="https://console.firebase.google.com/" target="_blank" rel="noopener noreferrer" className="text-orange-600 font-bold hover:underline">Firebase Console</a>-এ যান।</li>
+                      <li><span className="font-bold">Build &gt; Authentication &gt; Sign-in method</span> এ গিয়ে <span className="font-bold">Phone</span> প্রোভাইডারটি <span className="text-emerald-600">Enable</span> করুন।</li>
+                      <li>(ঐচ্ছিক) তাত্ক্ষণিক পরীক্ষার জন্য ওখানেই <span className="font-bold">"Phone numbers for testing"</span>-এ আপনার নম্বর ও একটি টেস্ট ওটিপি (যেমন ১২৩৪৫৬) সেট করে নিতে পারেন।</li>
+                    </ol>
+                  </div>
+                )}
 
                 <Button
                   type="submit"
@@ -638,6 +807,9 @@ export const Auth: React.FC = () => {
                 </div>
               </form>
             )}
+
+            {/* Hidden container for Firebase Invisible Recaptcha */}
+            <div id="recaptcha-container" className="hidden"></div>
           </div>
         )}
 

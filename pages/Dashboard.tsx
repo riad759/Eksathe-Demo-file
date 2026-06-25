@@ -3,15 +3,16 @@ import React, { useState } from 'react';
 import { Plan, User, ActivityType } from '../types';
 import { Card } from '../components/Card';
 import { Navigate, Link } from 'react-router-dom';
-import { auth, signOut, db, doc, setDoc, seedPlans, OperationType, handleFirestoreError } from '../firebase';
+import { auth, db, doc, setDoc, seedPlans, OperationType, handleFirestoreError } from '../firebase';
 import { Button } from '../components/Button';
 
 interface DashboardProps {
   user: User | null;
   userPlans: Plan[];
+  onLogout: () => void;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ user, userPlans }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ user, userPlans, onLogout }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(user?.name || '');
   const [saving, setSaving] = useState(false);
@@ -21,7 +22,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, userPlans }) => {
 
   const handleLogout = async () => {
     try {
-      await signOut(auth);
+      await onLogout();
     } catch (error) {
       console.error('Logout error:', error);
     }

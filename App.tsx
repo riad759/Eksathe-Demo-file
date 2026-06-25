@@ -184,7 +184,7 @@ const App: React.FC = () => {
             />
             <Route 
               path="/dashboard" 
-              element={<Dashboard user={user} userPlans={userPlans} />} 
+              element={<Dashboard user={user} userPlans={userPlans} onLogout={handleLogout} />} 
             />
             <Route path="/plan/:id" element={<PlanDetail plans={plans} user={user} />} />
             <Route path="*" element={<Navigate to="/" />} />
